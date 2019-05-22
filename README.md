@@ -1,6 +1,7 @@
 # 8Track - A Service Worker Router
 
 <p align="center"><img src="./doc/img/logo.svg"></p>
+<p align="center">Wanted: a better logo</p>
 
 > A service worker router with async middleware and neato type-inference inspired by Koa
 

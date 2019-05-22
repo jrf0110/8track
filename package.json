@@ -1,7 +1,10 @@
 {
   "name": "8track",
   "version": "1.0.0",
-  "description": "",
+  "description": "A service worker router with async middleware and neato type-inference inspired by Koa",
+  "repository": {
+    "url": "https://github.com/jrf0110/8track"
+  },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
@@ -14,13 +17,11 @@
   "author": "John Fawcett",
   "license": "ISC",
   "devDependencies": {
-    "@types/koa-compose": "^3.2.3",
     "ava": "^1.4.1",
     "service-worker-mock": "^2.0.3",
     "typescript": "^3.4.5"
   },
   "dependencies": {
-    "path-to-regexp": "^3.0.0",
-    "url-pattern": "^1.0.3"
+    "path-to-regexp": "^3.0.0"
   }
 }
