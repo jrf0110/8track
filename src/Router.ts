@@ -23,11 +23,13 @@ export class Context<Data = any, Params = any> {
       return this.response
     }
 
-    const headers = {}
-
-    this.response.headers.forEach((v, k) => {
-      ;(headers as any)[k] = v
-    })
+    const headers = [...(this.response.headers as any).entries()].reduce(
+      (result, [k, v]: [string, string]) => {
+        result[k] = v
+        return result
+      },
+      {} as { [key: string]: string },
+    )
 
     Object.assign(headers, responseInit.headers)
 
