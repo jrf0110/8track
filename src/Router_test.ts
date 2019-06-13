@@ -230,7 +230,7 @@ test('first response returned should resolve stack', async t => {
   }
 })
 
-test.only('response editing in middleware should work', async t => {
+test('response editing in middleware should work', async t => {
   mockGlobal()
 
   const r = new Router()

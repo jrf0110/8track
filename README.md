@@ -70,6 +70,30 @@ router.all`(.*)`.use(async (ctx, next) => {
 })
 ```
 
+#### Catch all errors and display error page
+
+![./doc/img/screen-3.png](./doc/img/screen-3.png)
+
+```typescript
+import { Router, getErrorPageHTML } from '8track'
+
+const router = new Router()
+
+addEventListener('fetch', e => {
+  const res = router.getResponseForRequest(e.request).catch(
+    error =>
+      new Response(getErrorPageHTML(e.request, error), {
+        status: 500,
+        headers: {
+          'Content-Type': 'text/html',
+        },
+      }),
+  )
+
+  e.respondWith(res as any)
+})
+```
+
 #### Attach new properties to each request
 
 Each Middleware and route handler receives a new copy of the ctx object, but a special object under the `data` property is mutable and should be used to share data between handlers
