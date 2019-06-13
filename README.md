@@ -35,7 +35,7 @@ router.all`(.*)`.use(async (ctx, next) => {
 
 router.get`/`.handle(ctx => ctx.html('Hello, world!'))
 
-router.all`(.*)`.handle(ctx => new Response('Not found', { status: 404 }))
+router.all`(.*)`.handle(ctx => ctx.end('Not found', { status: 404 }))
 
 addEventListener('fetch', (e: FetchEvent) => {
   e.respondWith(router.getResponseForRequest(e.request))
@@ -43,6 +43,56 @@ addEventListener('fetch', (e: FetchEvent) => {
 ```
 
 ## Examples
+
+#### Add CORS headers
+
+```typescript
+import { Router } from '8track'
+
+const router = new Router()
+
+router.all`(.*)`.use(async (ctx, next) => {
+  const allowedOrigins = ['https://www.myorigin.com']
+  const allowedHeaders = ['Content-type', 'X-My-Custom-Header']
+  const allowedMethods = ['GET', 'HEAD', 'PUT', 'POST', 'DELETE', 'PATCH']
+
+  ctx.response.headers.add('Vary', 'Origin')
+  ctx.response.headers.add('Access-Control-Allow-Origin', allowedOrigins.join(',))
+  ctx.response.headers.add('Access-Control-Allow-Headers', allowedHeaders.join(','))
+  ctx.response.headers.add('Access-Control-Allow-Methods', allowedMethods.join(','))
+  ctx.response.headers.add('Access-Control-Allow-Credentials', 'true')
+
+  if (ctx.req.method === 'OPTIONS') {
+    return ctx.end('', { status: 204 })
+  }
+
+  await next()
+})
+```
+
+#### Catch all errors and display error page
+
+![./doc/img/screen-3.png](./doc/img/screen-3.png)
+
+```typescript
+import { Router, getErrorPageHTML } from '8track'
+
+const router = new Router()
+
+addEventListener('fetch', e => {
+  const res = router.getResponseForRequest(e.request).catch(
+    error =>
+      new Response(getErrorPageHTML(e.request, error), {
+        status: 500,
+        headers: {
+          'Content-Type': 'text/html',
+        },
+      }),
+  )
+
+  e.respondWith(res as any)
+})
+```
 
 #### Attach new properties to each request
 
@@ -76,8 +126,8 @@ const router = new Router<RouteData>()
 router.all`/users/${'userId'}`.use(getUserMiddleware)
 
 router.get`/users/${'userId'}`.handle(ctx => {
-  if (!ctx.data.user) return new Response('Not found', { status: 404 })
-  return new Response(JSON.stringify(ctx.data.user))
+  if (!ctx.data.user) return ctx.end('Not found', { status: 404 })
+  ctx.json(JSON.stringify(ctx.data.user))
 })
 ```
 
@@ -136,11 +186,11 @@ router.patch`/api/users/${'id'}`.use(async (ctx, next) => {
 })
 ```
 
-#### .handle((ctx: Context) => Promise<Response> | Response)
+#### .handle((ctx: Context) => any)
 
 Mount a route handler that should return an instance of Response
 
-#### .use((ctx: Context, next: () => void) => Promise<Response> | Response)
+#### .use((ctx: Context, next: () => Promise<void>) => any)
 
 Mount a route middleware that can optionally terminate the chain early and handle the request.
 
@@ -149,10 +199,11 @@ router.patch`/api/users/${'id'}`.use(async (ctx, next) => {
   console.log('Before: User ID', ctx.params.id)
 
   if (ctx.params.id === '123') {
-    return Response.redirect(302)
+    return ctx.end(Response.redirect(302))
   }
 
   await next()
+
   console.log('After: User ID', ctx.params.id)
 })
 ```

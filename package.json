@@ -8,6 +8,7 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
+    "prepublishOnly": "yarn build",
     "build": "tsc -d",
     "build:watch": "yarn build -w",
     "typecheck": "tsc --noEmit",
@@ -17,6 +18,7 @@
   "author": "John Fawcett",
   "license": "ISC",
   "devDependencies": {
+    "@cloudflare/workers-types": "^1.0.1",
     "ava": "^1.4.1",
     "service-worker-mock": "^2.0.3",
     "typescript": "^3.4.5"

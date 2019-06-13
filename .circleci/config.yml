@@ -1,6 +1,6 @@
 version: 2
 jobs:
-  build:
+  test:
     docker:
       - image: circleci/node:11.9.0
     steps:
@@ -9,29 +9,20 @@ jobs:
           key: dependency-cache-{{ checksum "yarn.lock" }}
       - run:
           name: Install dependencies
-          command: yarn
+          command: NODE_ENV=development yarn
       - save_cache:
           key: dependency-cache-{{ checksum "yarn.lock" }}
           paths:
             - node_modules
       - run:
           name: Compile
-          command: yarn build
-
-  test:
-    docker:
-      - image: circleci/node:11.9.0
-    steps:
-      - checkout
+          command: NODE_ENV=development yarn build
       - run:
           name: Test
-          command: yarn test
+          command: NODE_ENV=development yarn test
 
 workflows:
   version: 2
   build_and_test:
     jobs:
-      - build
-      - test:
-          requires:
-            - build
+      - test
