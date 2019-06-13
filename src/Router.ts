@@ -7,26 +7,55 @@ import pathToRegExp from 'path-to-regexp'
 export class Context<Data = any, Params = any> {
   readonly request: Request
   readonly params: Params
+  response: Response
   data: Data
 
-  constructor(request: Request, params: Params, data: Data) {
+  constructor(request: Request, response: Response, params: Params, data: Data) {
     this.request = request
+    this.response = response
     this.params = params
     this.data = data
   }
 
-  html(body: string) {
-    return new Response(body, {
+  end(body: string | ReadableStream | Response, responseInit: ResponseInit = {}) {
+    if (body instanceof Response) {
+      this.response = body
+      return this.response
+    }
+
+    const headers = {}
+
+    this.response.headers.forEach((v, k) => {
+      ;(headers as any)[k] = v
+    })
+
+    Object.assign(headers, responseInit.headers)
+
+    this.response = new Response(body, {
+      ...this.response,
+      ...responseInit,
+      headers,
+    })
+
+    return this.response
+  }
+
+  html(body: string | ReadableStream, responseInit: ResponseInit = {}) {
+    return this.end(body, {
+      ...responseInit,
       headers: {
         'Content-Type': 'text/html',
+        ...(responseInit.headers || {}),
       },
     })
   }
 
-  json(body: object) {
-    return new Response(JSON.stringify(body), {
+  json(body: object, responseInit: ResponseInit = {}) {
+    return this.end(JSON.stringify(body), {
+      ...responseInit,
       headers: {
         'Content-Type': 'application/json',
+        ...(responseInit.headers || {}),
       },
     })
   }
@@ -35,7 +64,7 @@ export class Context<Data = any, Params = any> {
 export type Handler<ContextData = any, Params = any> = (
   ctx: Context<ContextData, Params>,
   next?: () => Promise<void>,
-) => Promise<Response> | Response
+) => any
 
 export type Middleware<ContextData = any, Params = any> = (
   ctx: Context<ContextData, Params>,
@@ -184,8 +213,8 @@ export class Router<ContextData = any> {
     )
   }
 
-  createContext(request: Request, params: any = {}, data: any = {}): Context {
-    return new Context(request, params, data)
+  createContext(request: Request, response: Response, params: any = {}, data: any = {}): Context {
+    return new Context(request, response, params, data)
   }
 
   async getResponseForRequest(request: Request) {
@@ -194,10 +223,10 @@ export class Router<ContextData = any> {
     if (matchingRoutes.length === 0) return
 
     const sharedData = {}
+    let ctx: Context
 
     // Adapted from koa-compose https://github.com/koajs/compose/blob/master/index.js
     let index = -1
-    let res: Response | null = null
 
     const dispatch = (i: number): Promise<Response | undefined> | void => {
       if (i <= index) return Promise.reject(new Error('next() called multiple times'))
@@ -205,17 +234,11 @@ export class Router<ContextData = any> {
       if (i === matchingRoutes.length) return
       index = i
       const { route, params } = matchingRoutes[i]
-      const ctx = this.createContext(request, params, sharedData)
+      ctx = this.createContext(request, (ctx && ctx.response) || new Response(), params, sharedData)
 
       try {
         return Promise.resolve(route.handler(ctx, dispatch.bind(null, i + 1) as any)).then(
-          (response?: Response) => {
-            if (response instanceof Response) {
-              res = response
-            }
-
-            return response
-          },
+          () => ctx.response,
         )
       } catch (err) {
         return Promise.reject(err)
@@ -224,8 +247,8 @@ export class Router<ContextData = any> {
 
     const p = dispatch(0)
 
-    if (p) return p.then(() => res)
+    if (p) return p.then(() => ctx.response)
 
-    return res
+    return null
   }
 }
