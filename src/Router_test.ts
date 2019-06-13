@@ -13,7 +13,7 @@ test('.getMatchingRoutes() empty for non-matches', t => {
 
   t.deepEqual(r.getMatchingRoutes({ url: '/', method: 'GET' }), [])
 
-  r.get`/api/users`.handle(() => new Response('users-list'))
+  r.get`/api/users`.handle(ctx => ctx.end('users-list'))
 
   t.deepEqual(r.getMatchingRoutes({ url: '/', method: 'GET' }), [])
 })
@@ -21,7 +21,7 @@ test('.getMatchingRoutes() empty for non-matches', t => {
 test('.getMatchingRoutes() matches no path no vars', t => {
   mockGlobal()
 
-  const r = new Router().get`/api/users`.handle(() => new Response('users-list')).router()
+  const r = new Router().get`/api/users`.handle(ctx => ctx.end('users-list')).router()
 
   t.deepEqual(
     r
@@ -36,8 +36,8 @@ test('.getMatchingRoutes() matches with vars', t => {
 
   const r = new Router()
 
-  r.get`/api/users`.handle(() => new Response('users-list'))
-  r.get`/api/users/:id`.handle(() => new Response('user-get'))
+  r.get`/api/users`.handle(ctx => ctx.end('users-list'))
+  r.get`/api/users/:id`.handle(ctx => ctx.end('user-get'))
 
   t.deepEqual(
     r
@@ -52,8 +52,8 @@ test('.getMatchingRoutes() works with hostnames', t => {
 
   const r = new Router()
 
-  r.get`https?://`.handle(() => new Response('users-list'))
-  r.get`/api/users/:id`.handle(() => new Response('user-get'))
+  r.get`https?://`.handle(ctx => ctx.end('users-list'))
+  r.get`/api/users/:id`.handle(ctx => ctx.end('user-get'))
 
   t.deepEqual(
     r
@@ -68,13 +68,13 @@ test('helper methods work', t => {
 
   const r = new Router()
 
-  r.get`/get`.handle(() => new Response('hi'))
-  r.post`/post`.handle(() => new Response('hi'))
-  r.put`/put`.handle(() => new Response('hi'))
-  r.patch`/patch`.handle(() => new Response('hi'))
-  r.delete`/delete`.handle(() => new Response('hi'))
-  r.options`/options`.handle(() => new Response('hi'))
-  r.all`/all`.handle(() => new Response('hi'))
+  r.get`/get`.handle(ctx => ctx.end('hi'))
+  r.post`/post`.handle(ctx => ctx.end('hi'))
+  r.put`/put`.handle(ctx => ctx.end('hi'))
+  r.patch`/patch`.handle(ctx => ctx.end('hi'))
+  r.delete`/delete`.handle(ctx => ctx.end('hi'))
+  r.options`/options`.handle(ctx => ctx.end('hi'))
+  r.all`/all`.handle(ctx => ctx.end('hi'))
 
   t.is(r.getMatchingRoutes({ url: '/get', method: 'GET' }).length, 1)
   t.is(r.getMatchingRoutes({ url: '/post', method: 'POST' }).length, 1)
@@ -119,7 +119,7 @@ test('middleware should work', async t => {
     })
     .handle(async ctx => {
       history.push(`responding-${ctx.params.id}`)
-      return new Response('hi')
+      ctx.end('hi')
     })
 
   const res = await r.getResponseForRequest({ url: '/users/123', method: 'GET' } as Request)
@@ -165,7 +165,7 @@ test('first response returned should resolve stack', async t => {
   r.get`/users/${'id'}`
     .use(async (ctx, next) => {
       if (ctx.params.id === 'bail-early') {
-        return new Response('whoa')
+        return ctx.end('whoa')
       }
 
       history.push(`get-user-middleware-${ctx.params.id}`)
@@ -183,15 +183,15 @@ test('first response returned should resolve stack', async t => {
       }
 
       history.push(`responding-${ctx.params.id}`)
-      return new Response('hi')
+      return ctx.end('hi')
     })
 
   r.get`/users/${'id'}`.handle(async ctx => {
     t.fail('should never get called')
-    return new Response('hi')
+    return ctx.end('hi')
   })
 
-  r.all`(.*)`.handle(ctx => new Response('Not found', { status: 404 }))
+  r.all`(.*)`.handle(ctx => ctx.end('Not found', { status: 404 }))
 
   let res = await r.getResponseForRequest({ url: '/users/123', method: 'GET' } as Request)
 
@@ -225,6 +225,28 @@ test('first response returned should resolve stack', async t => {
 
   if (res) {
     t.is(await res.text(), 'Not found')
+  } else {
+    t.fail('Response was undefined')
+  }
+})
+
+test.only('response editing in middleware should work', async t => {
+  mockGlobal()
+
+  const r = new Router()
+
+  r.all`(.*)`.use(async (ctx, next) => {
+    ctx.response.headers.set('X-Testing', 'test')
+    await next()
+  })
+
+  r.get`/foo`.handle(ctx => ctx.end('hi'))
+
+  const res = await r.getResponseForRequest({ url: '/foo', method: 'GET' } as Request)
+
+  if (res) {
+    t.is(await res.text(), 'hi')
+    t.is(res.headers.get('x-testing'), 'test')
   } else {
     t.fail('Response was undefined')
   }
