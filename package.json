@@ -5,12 +5,17 @@
   "repository": {
     "url": "https://github.com/jrf0110/8track"
   },
+  "bin": {
+    "8track": "./dist/cli.js"
+  },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "prepublishOnly": "yarn build",
+    "prepublishOnly": "yarn build && yarn build:shebang && yarn build:executable",
     "build": "tsc -d",
     "build:watch": "yarn build -w",
+    "build:shebang": "printf '%s\n%s\n' \"#!/usr/bin/env node\n\" \"$(cat dist/cli.js)\" > dist/cli.js",
+    "build:executable": "chmod +x dist/cli.js",
     "typecheck": "tsc --noEmit",
     "test": "ava dist/*_test.js",
     "test:watch": "yarn test -w"
@@ -19,11 +24,16 @@
   "license": "ISC",
   "devDependencies": {
     "@cloudflare/workers-types": "^1.0.1",
+    "@types/yargs": "^13.0.0",
     "ava": "^1.4.1",
     "service-worker-mock": "^2.0.3",
     "typescript": "^3.4.5"
   },
   "dependencies": {
-    "path-to-regexp": "^3.0.0"
+    "form-data": "^2.5.0",
+    "isomorphic-fetch": "^2.2.1",
+    "path-to-regexp": "^3.0.0",
+    "storage-kv": "^0.0.7",
+    "yargs": "^13.2.4"
   }
 }

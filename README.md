@@ -227,3 +227,50 @@ foo`testing: ${'bar'} - ${'baz'} cool`
 Since the template literal is able to extract a tuple whose types are the _literal values_ passed in, we can utilize generics to describe the shape of the route parameters:
 
 ![./doc/img/screen-2.png](./doc/img/screen-2.png)
+
+## Built-in Middleware
+
+### KV Static
+
+Serves files from Cloudflare KV.
+
+```typescript
+import { Router, kvStatic } from '8track'
+
+const router = new Router()
+
+router.all`(.*)`.use(kvStatic({ kv: myKvNamespaceVar, maxAge: 24 * 60 * 60 * 30 }))
+```
+
+## Deploying your worker
+
+8track comes with a CLI to upload your worker and sync your kv files. In order to use 8track's kv [static file middleware](#kv-static), you must upload your files using this CLI.
+
+Add a deploy script to your package.json:
+
+```javascript
+{
+  "scripts": {
+    "deploy": "8track deploy --worker dist/worker.js --kv-files dist/client.js,dist/client.css"
+  }
+}
+```
+
+**Note**: This does not support globs yet!
+
+You'll need the following environment variables set:
+
+```bash
+# Your Cloudflare API Token
+CF_KEY
+# Your Cloudflare account email
+CF_EMAIL
+# Your Cloudflare account ID
+CF_ID
+# The ID of the namespace
+KV_NAMESPACE_ID
+# The name of the KV namespace you want to use
+KV_NAMESPACE
+# The variable name your KV namespace is bound to
+KV_VAR_NAME
+```
