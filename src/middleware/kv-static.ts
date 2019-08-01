@@ -16,6 +16,8 @@ export function kvStatic(options: KVStaticOptions): Middleware {
     const contentTypes = {
       css: 'text/css',
       js: 'application/javascript',
+      map: 'application/json',
+      json: 'application/json',
       html: 'text/html',
       png: 'image/png',
       svg: 'image/svg+xml',
