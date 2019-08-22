@@ -198,12 +198,15 @@ export class Router<ContextData = any> {
 
         const params: { [key: string]: string } = {}
 
+        // Starting from 1 because 0 is the whole pathname
+        let patternResultIndex = 1
+
         for (let i = 0; i < routeTokens.length; i++) {
           if (typeof routeTokens[i] === 'string') {
             continue
           } else {
             const token: pathToRegExp.Key = routeTokens[i] as any
-            params[token.name] = patternResult[i]
+            params[token.name] = patternResult[patternResultIndex++]
           }
         }
 
