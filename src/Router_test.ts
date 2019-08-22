@@ -251,3 +251,25 @@ test('response editing in middleware should work', async t => {
     t.fail('Response was undefined')
   }
 })
+
+test('multiple params specified should all be defined', async t => {
+  mockGlobal()
+
+  const r = new Router()
+
+  // [type, userId, bookId]
+  const result: [string, string, string][] = []
+
+  r.get`/users/${'userId'}/books/${'bookId'}`.use(async (ctx, next) => {
+    result.push(['middleware', ctx.params.userId, ctx.params.bookId])
+    await next()
+  })
+
+  r.get`/users/${'userId'}/books/${'bookId'}`.handle(async ctx => {
+    result.push(['handler', ctx.params.userId, ctx.params.bookId])
+  })
+
+  await r.getResponseForRequest({ url: '/users/123/books/456', method: 'GET' } as Request)
+
+  t.deepEqual(result, [['middleware', '123', '456'], ['handler', '123', '456']])
+})
