@@ -19,7 +19,7 @@ yarn add 8track
 
 This library is written in TypeScript, so typings are bundled.
 
-#### Basic usage Usage
+#### Basic usage
 
 ```typescript
 import { Router } from '8track'
@@ -56,11 +56,11 @@ router.all`(.*)`.use(async (ctx, next) => {
   const allowedHeaders = ['Content-type', 'X-My-Custom-Header']
   const allowedMethods = ['GET', 'HEAD', 'PUT', 'POST', 'DELETE', 'PATCH']
 
-  ctx.response.headers.add('Vary', 'Origin')
-  ctx.response.headers.add('Access-Control-Allow-Origin', allowedOrigins.join(',))
-  ctx.response.headers.add('Access-Control-Allow-Headers', allowedHeaders.join(','))
-  ctx.response.headers.add('Access-Control-Allow-Methods', allowedMethods.join(','))
-  ctx.response.headers.add('Access-Control-Allow-Credentials', 'true')
+  ctx.response.headers.append('Vary', 'Origin')
+  ctx.response.headers.append('Access-Control-Allow-Origin', allowedOrigins.join(','))
+  ctx.response.headers.append('Access-Control-Allow-Headers', allowedHeaders.join(','))
+  ctx.response.headers.append('Access-Control-Allow-Methods', allowedMethods.join(','))
+  ctx.response.headers.append('Access-Control-Allow-Credentials', 'true')
 
   if (ctx.req.method === 'OPTIONS') {
     return ctx.end('', { status: 204 })
