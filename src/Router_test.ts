@@ -1,6 +1,8 @@
 import test from 'ava'
 const makeServiceWorkerEnv = require('service-worker-mock')
 import { Router, Context, Middleware } from './Router'
+import { kvStatic } from './middleware/kv-static'
+import { KVNamespace } from '@cloudflare/workers-types'
 
 function mockGlobal() {
   Object.assign(global, makeServiceWorkerEnv())
@@ -247,6 +249,30 @@ test('response editing in middleware should work', async t => {
   if (res) {
     t.is(await res.text(), 'hi')
     t.is(res.headers.get('x-testing'), 'test')
+  } else {
+    t.fail('Response was undefined')
+  }
+})
+test.only('response editing kv should work', async t => {
+  mockGlobal()
+
+  const r = new Router()
+  const myKvNamespaceVar: any = { get: () => 'some body' }
+  r.all`(.*)`.use(
+    kvStatic(myKvNamespaceVar, {
+      cacheControl: { browserTTL: 50, edgeTTL: 0, bypassCache: false },
+    }),
+  )
+
+  r.get`/foo.css`.handle(ctx => ctx.end('hi', { status: 500 }))
+
+  const res = await r.getResponseForRequest({
+    url: 'https://ex.com/foo.css',
+    method: 'GET',
+  } as Request)
+
+  if (res) {
+    t.is(res.headers.get('cache-control'), 'max-age=50')
   } else {
     t.fail('Response was undefined')
   }

@@ -32,7 +32,7 @@ const defaultSiteInit: SiteInit = {
  * Streams files out of KV if it exists
  * TODO KVNamespace should come from the wrangler config .. ?
  */
-export function kvStatic(kv: KVNamespace, mOptions: Partial<SiteInit>): Middleware {
+export function kvStatic(kv: any, mOptions: Partial<SiteInit>): Middleware {
   return async (ctx, next) => {
     // TODO: Store mime types in KV as well
     const contentTypes = {
