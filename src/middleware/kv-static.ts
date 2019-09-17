@@ -11,13 +11,17 @@ type SiteInit = {
   /* handle requests that don't exist on the bucket */
   notFoundHandler: (req: Request) => Response | Promise<Response>
   /* configure how the incoming request's path is found in the bucket */
-  pathToKeyModifier: (path: string) => string
+  keyModifier: (path: string) => string
   /* control the cache for all the site's content or on per request bias */
   cacheControl: CacheOptions | ((req: Request) => CacheOptions)
 }
 const defaultSiteInit: SiteInit = {
   notFoundHandler: () => new Response('Not Found', { status: 404 }),
-  pathToKeyModifier: (path: string) => path,
+  keyModifier: (url: string) => {
+    let parsedUrl = new URL(url)
+    let path = parsedUrl.pathname
+    return path.endsWith('/') ? path + 'index.html' : path
+  },
   cacheControl: {
     browserTTL: 720,
     edgeTTL: 720,
@@ -67,8 +71,7 @@ export function kvStatic(kv: KVNamespace, mOptions: Partial<SiteInit>): Middlewa
     const cacheOpts: CacheOptions = Object.assign({}, defaultSiteInit.cacheControl, evalCacheOpts)
 
     // TODO first try to match request will cache
-    // TODO eval path handler
-    const filename = ctx.request.url.substring(ctx.request.url.lastIndexOf('/') + 1)
+    const filename = options.keyModifier(ctx.request.url)
     const ext = filename.substring(filename.lastIndexOf('.') + 1)
     const contentType = contentTypes[ext as keyof typeof contentTypes] || 'text'
     const body = await kv.get(filename, 'stream')
