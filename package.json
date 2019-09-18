@@ -17,7 +17,7 @@
     "build:shebang": "printf '%s\n%s\n' \"#!/usr/bin/env node\n\" \"$(cat dist/cli.js)\" > dist/cli.js",
     "build:executable": "chmod +x dist/cli.js",
     "typecheck": "tsc --noEmit",
-    "test": "ava dist/*_test.js",
+    "test": "ava dist/*_test.js --verbose",
     "test:watch": "yarn test -w"
   },
   "author": "John Fawcett",

@@ -239,8 +239,10 @@ import { Router, kvStatic } from '8track'
 
 const router = new Router()
 
-router.all`(.*)`.use(kvStatic({ kv: myKvNamespaceVar, maxAge: 24 * 60 * 60 * 30 }))
+router.all`(.*)`.use(kvStatic(kv: myKvNamespaceVar, { cacheControl: {browserTTL: 720, edgeTTL: 60 * 60 * 30, bypassCache:false}}))
 ```
+
+Note `myKvNamespaceVar` is the name of the binding to your script
 
 ## Deploying your worker
 
