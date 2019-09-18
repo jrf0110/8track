@@ -253,14 +253,63 @@ test('response editing in middleware should work', async t => {
     t.fail('Response was undefined')
   }
 })
-test.only('response editing kv should work', async t => {
+test('kvStatic specifying only one KV options is OK, bypassCache keeps default browser cache', async t => {
   mockGlobal()
 
   const r = new Router()
   const myKvNamespaceVar: any = { get: () => 'some body' }
   r.all`(.*)`.use(
-    kvStatic(myKvNamespaceVar, {
-      cacheControl: { browserTTL: 50, edgeTTL: 0, bypassCache: false },
+    kvStatic({
+      kv: myKvNamespaceVar,
+      options: {
+        cacheControl: { bypassCache: true },
+      },
+    }),
+  )
+  const res = await r.getResponseForRequest({
+    url: 'https://ex.com/foo.css',
+    method: 'GET',
+  } as Request)
+
+  if (res) {
+    t.is(res.headers.get('cache-control'), 'max-age=720')
+  } else {
+    t.fail('Response was undefined')
+  }
+})
+test('kvStatic a missing .get will 404 to my specified handler', async t => {
+  mockGlobal()
+  const r = new Router()
+  const myKvNamespaceVar: any = { get: () => null }
+  const myHandle = (request: Request) => new Response('custom 404')
+  r.all`(.*)`.use(
+    kvStatic({
+      kv: myKvNamespaceVar,
+      options: {
+        notFoundHandler: myHandle,
+      },
+    }),
+  )
+  const res = await r.getResponseForRequest({
+    url: 'https://ex.com/foo.css',
+    method: 'GET',
+  } as Request)
+
+  if (res) {
+    t.is(await res.text(), 'custom 404')
+  }
+})
+test('kvStatic specifying browserTTL should set the cache header ', async t => {
+  mockGlobal()
+
+  const r = new Router()
+  const myKvNamespaceVar: any = { get: () => 'some body' }
+  r.all`(.*)`.use(
+    kvStatic({
+      kv: myKvNamespaceVar,
+      options: {
+        cacheControl: { browserTTL: 50, edgeTTL: 0, bypassCache: false },
+      },
     }),
   )
 
