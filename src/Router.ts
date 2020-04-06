@@ -9,12 +9,14 @@ export class Context<Data = any, Params = any> {
   readonly params: Params
   response: Response
   data: Data
+  event: FetchEvent
 
-  constructor(request: Request, response: Response, params: Params, data: Data) {
+  constructor(request: Request, response: Response, params: Params, data: Data, event: FetchEvent) {
     this.request = request
     this.response = response
     this.params = params
     this.data = data
+    this.event = event
   }
 
   end(body: string | ReadableStream | Response, responseInit: ResponseInit = {}) {
@@ -181,49 +183,72 @@ export class Router<ContextData = any> {
       ? new URL(`http://domain${request.url.startsWith('/') ? '' : '/'}${request.url}`)
       : new URL(request.url)
 
-    return this.routes.reduce(
-      (result, route) => {
-        const {
-          pattern: [pattern, routeTokens],
-          method,
-          original,
-        } = route
+    return this.routes.reduce((result, route) => {
+      const {
+        pattern: [pattern, routeTokens],
+        method,
+        original,
+      } = route
 
-        if (method !== 'ALL' && method !== request.method) return result
+      if (method !== 'ALL' && method !== request.method) return result
 
-        // const [patternRegex, patternParse] = pattern
-        const patternResult = pattern.exec(original.startsWith('http') ? url.href : url.pathname)
+      // const [patternRegex, patternParse] = pattern
+      const patternResult = pattern.exec(original.startsWith('http') ? url.href : url.pathname)
 
-        if (!patternResult) return result
+      if (!patternResult) return result
 
-        const params: { [key: string]: string } = {}
+      const params: { [key: string]: string } = {}
 
-        // Starting from 1 because 0 is the whole pathname
-        // Params start from index 1
-        let patternResultIndex = 1
+      // Starting from 1 because 0 is the whole pathname
+      // Params start from index 1
+      let patternResultIndex = 1
 
-        for (let i = 0; i < routeTokens.length; i++) {
-          if (typeof routeTokens[i] === 'string') {
-            continue
-          } else {
-            const token: pathToRegExp.Key = routeTokens[i] as any
-            params[token.name] = patternResult[patternResultIndex++]
-          }
+      for (let i = 0; i < routeTokens.length; i++) {
+        if (typeof routeTokens[i] === 'string') {
+          continue
+        } else {
+          const token: pathToRegExp.Key = routeTokens[i] as any
+          params[token.name] = patternResult[patternResultIndex++]
         }
+      }
 
-        result.push({ params, route })
+      result.push({ params, route })
 
-        return result
-      },
-      [] as RouteMatch[],
-    )
+      return result
+    }, [] as RouteMatch[])
   }
 
-  createContext(request: Request, response: Response, params: any = {}, data: any = {}): Context {
-    return new Context(request, response, params, data)
+  createContext(
+    request: Request,
+    response: Response,
+    params: any = {},
+    data: any = {},
+    event: FetchEvent,
+  ): Context {
+    return new Context(request, response, params, data, event)
   }
 
-  async getResponseForRequest(request: Request) {
+  /**
+   * Generates a response for current event.
+   *
+   * @param event FetchEvent
+   * @returns Promise<Response>
+   */
+  getResponseForEvent(event: FetchEvent) {
+    return this.getResponse(event.request, event)
+  }
+
+  /**
+   * Generates a response for current request. This method is deprecated and will be removed in the future. Use getResponseForEvent.
+   *
+   * @param request
+   * @deprecated
+   */
+  getResponseForRequest(request: Request) {
+    return this.getResponse(request, (null as unknown) as FetchEvent)
+  }
+
+  private async getResponse(request: Request, event: FetchEvent) {
     const matchingRoutes = this.getMatchingRoutes(request)
 
     if (matchingRoutes.length === 0) return
@@ -240,7 +265,13 @@ export class Router<ContextData = any> {
       if (i === matchingRoutes.length) return
       index = i
       const { route, params } = matchingRoutes[i]
-      ctx = this.createContext(request, (ctx && ctx.response) || new Response(), params, sharedData)
+      ctx = this.createContext(
+        request,
+        (ctx && ctx.response) || new Response(),
+        params,
+        sharedData,
+        event,
+      )
 
       try {
         return Promise.resolve(route.handler(ctx, dispatch.bind(null, i + 1) as any)).then(
