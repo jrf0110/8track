@@ -38,7 +38,7 @@ router.get`/`.handle(ctx => ctx.html('Hello, world!'))
 router.all`(.*)`.handle(ctx => ctx.end('Not found', { status: 404 }))
 
 addEventListener('fetch', (e: FetchEvent) => {
-  e.respondWith(router.getResponseForRequest(e.request))
+  e.respondWith(router.getResponseForEvent(e))
 })
 ```
 
@@ -80,7 +80,7 @@ import { Router, getErrorPageHTML } from '8track'
 const router = new Router()
 
 addEventListener('fetch', e => {
-  const res = router.getResponseForRequest(e.request).catch(
+  const res = router.getResponseForEvent(e).catch(
     error =>
       new Response(getErrorPageHTML(e.request, error), {
         status: 500,
@@ -141,9 +141,9 @@ Instantiate a new router
 const router = new Router<{ logger: typeof console.log }>()
 ```
 
-#### .getResponseForRequest(request: Request): Promise<Response> | undefined
+#### .getResponseForEvent(request: FetchEvent): Promise<Response> | undefined
 
-Given a request, run the matching middleware chain and return the response returned by the chain.
+Given an event, run the matching middleware chain and return the response returned by the chain.
 
 #### Router handlers and middleware
 
