@@ -5,18 +5,16 @@ import pathToRegExp from 'path-to-regexp'
  * and to share data between middlewares and handlers
  */
 export class Context<Data = any, Params = any> {
-  readonly request: Request
+  readonly event: FetchEvent
   readonly params: Params
   response: Response
   data: Data
-  event: FetchEvent
 
-  constructor(request: Request, response: Response, params: Params, data: Data, event: FetchEvent) {
-    this.request = request
+  constructor(event: FetchEvent, response: Response, params: Params, data: Data) {
+    this.event = event
     this.response = response
     this.params = params
     this.data = data
-    this.event = event
   }
 
   end(body: string | ReadableStream | Response, responseInit: ResponseInit = {}) {
@@ -218,14 +216,8 @@ export class Router<ContextData = any> {
     }, [] as RouteMatch[])
   }
 
-  createContext(
-    request: Request,
-    response: Response,
-    params: any = {},
-    data: any = {},
-    event: FetchEvent,
-  ): Context {
-    return new Context(request, response, params, data, event)
+  createContext(event: FetchEvent, response: Response, params: any = {}, data: any = {}): Context {
+    return new Context(event, response, params, data)
   }
 
   /**
@@ -234,22 +226,8 @@ export class Router<ContextData = any> {
    * @param event FetchEvent
    * @returns Promise<Response>
    */
-  getResponseForEvent(event: FetchEvent) {
-    return this.getResponse(event.request, event)
-  }
-
-  /**
-   * Generates a response for current request. This method is deprecated and will be removed in the future. Use getResponseForEvent.
-   *
-   * @param request
-   * @deprecated
-   */
-  getResponseForRequest(request: Request) {
-    return this.getResponse(request, (null as unknown) as FetchEvent)
-  }
-
-  private async getResponse(request: Request, event: FetchEvent) {
-    const matchingRoutes = this.getMatchingRoutes(request)
+  async getResponseForEvent(event: FetchEvent) {
+    const matchingRoutes = this.getMatchingRoutes(event.request)
 
     if (matchingRoutes.length === 0) return
 
@@ -265,13 +243,7 @@ export class Router<ContextData = any> {
       if (i === matchingRoutes.length) return
       index = i
       const { route, params } = matchingRoutes[i]
-      ctx = this.createContext(
-        request,
-        (ctx && ctx.response) || new Response(),
-        params,
-        sharedData,
-        event,
-      )
+      ctx = this.createContext(event, (ctx && ctx.response) || new Response(), params, sharedData)
 
       try {
         return Promise.resolve(route.handler(ctx, dispatch.bind(null, i + 1) as any)).then(
