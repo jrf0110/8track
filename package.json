@@ -1,6 +1,6 @@
 {
   "name": "8track",
-  "version": "1.0.7",
+  "version": "1.1.0",
   "description": "A service worker router with async middleware and neato type-inference inspired by Koa",
   "repository": {
     "url": "https://github.com/jrf0110/8track"
