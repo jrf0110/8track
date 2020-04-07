@@ -6,75 +6,75 @@ function mockGlobal() {
   Object.assign(global, makeServiceWorkerEnv())
 }
 
-test('.getMatchingRoutes() empty for non-matches', t => {
+test('.getMatchingRoutes() empty for non-matches', (t) => {
   mockGlobal()
 
   const r = new Router()
 
   t.deepEqual(r.getMatchingRoutes({ url: '/', method: 'GET' }), [])
 
-  r.get`/api/users`.handle(ctx => ctx.end('users-list'))
+  r.get`/api/users`.handle((ctx) => ctx.end('users-list'))
 
   t.deepEqual(r.getMatchingRoutes({ url: '/', method: 'GET' }), [])
 })
 
-test('.getMatchingRoutes() matches no path no vars', t => {
+test('.getMatchingRoutes() matches no path no vars', (t) => {
   mockGlobal()
 
-  const r = new Router().get`/api/users`.handle(ctx => ctx.end('users-list')).router()
+  const r = new Router().get`/api/users`.handle((ctx) => ctx.end('users-list')).router()
 
   t.deepEqual(
     r
       .getMatchingRoutes({ method: 'GET', url: 'http://foo.bar/api/users' })
-      .map(m => [m.route.original, m.params]),
+      .map((m) => [m.route.original, m.params]),
     [['/api/users', {}]],
   )
 })
 
-test('.getMatchingRoutes() matches with vars', t => {
+test('.getMatchingRoutes() matches with vars', (t) => {
   mockGlobal()
 
   const r = new Router()
 
-  r.get`/api/users`.handle(ctx => ctx.end('users-list'))
-  r.get`/api/users/:id`.handle(ctx => ctx.end('user-get'))
+  r.get`/api/users`.handle((ctx) => ctx.end('users-list'))
+  r.get`/api/users/:id`.handle((ctx) => ctx.end('user-get'))
 
   t.deepEqual(
     r
       .getMatchingRoutes({ method: 'GET', url: 'http://foo.bar/api/users/123' })
-      .map(m => [m.route.original, m.params]),
+      .map((m) => [m.route.original, m.params]),
     [['/api/users/:id', { id: '123' }]],
   )
 })
 
-test('.getMatchingRoutes() works with hostnames', t => {
+test('.getMatchingRoutes() works with hostnames', (t) => {
   mockGlobal()
 
   const r = new Router()
 
-  r.get`https?://`.handle(ctx => ctx.end('users-list'))
-  r.get`/api/users/:id`.handle(ctx => ctx.end('user-get'))
+  r.get`https?://`.handle((ctx) => ctx.end('users-list'))
+  r.get`/api/users/:id`.handle((ctx) => ctx.end('user-get'))
 
   t.deepEqual(
     r
       .getMatchingRoutes({ method: 'GET', url: 'http://foo.bar/api/users/123' })
-      .map(m => [m.route.original, m.params]),
+      .map((m) => [m.route.original, m.params]),
     [['/api/users/:id', { id: '123' }]],
   )
 })
 
-test('helper methods work', t => {
+test('helper methods work', (t) => {
   mockGlobal()
 
   const r = new Router()
 
-  r.get`/get`.handle(ctx => ctx.end('hi'))
-  r.post`/post`.handle(ctx => ctx.end('hi'))
-  r.put`/put`.handle(ctx => ctx.end('hi'))
-  r.patch`/patch`.handle(ctx => ctx.end('hi'))
-  r.delete`/delete`.handle(ctx => ctx.end('hi'))
-  r.options`/options`.handle(ctx => ctx.end('hi'))
-  r.all`/all`.handle(ctx => ctx.end('hi'))
+  r.get`/get`.handle((ctx) => ctx.end('hi'))
+  r.post`/post`.handle((ctx) => ctx.end('hi'))
+  r.put`/put`.handle((ctx) => ctx.end('hi'))
+  r.patch`/patch`.handle((ctx) => ctx.end('hi'))
+  r.delete`/delete`.handle((ctx) => ctx.end('hi'))
+  r.options`/options`.handle((ctx) => ctx.end('hi'))
+  r.all`/all`.handle((ctx) => ctx.end('hi'))
 
   t.is(r.getMatchingRoutes({ url: '/get', method: 'GET' }).length, 1)
   t.is(r.getMatchingRoutes({ url: '/post', method: 'POST' }).length, 1)
@@ -85,7 +85,7 @@ test('helper methods work', t => {
   t.is(r.getMatchingRoutes({ url: '/all', method: 'ALL' }).length, 1)
 })
 
-test('middleware should work', async t => {
+test('middleware should work', async (t) => {
   mockGlobal()
 
   const r = new Router()
@@ -117,12 +117,14 @@ test('middleware should work', async t => {
       await next()
       history.push(`get-user-2-after-middleware-${ctx.params.id}`)
     })
-    .handle(async ctx => {
+    .handle(async (ctx) => {
       history.push(`responding-${ctx.params.id}`)
       ctx.end('hi')
     })
 
-  const res = await r.getResponseForRequest({ url: '/users/123', method: 'GET' } as Request)
+  const res = await r.getResponseForEvent({
+    request: { url: '/users/123', method: 'GET' },
+  } as FetchEvent)
 
   t.deepEqual(history, [
     'all-*',
@@ -143,7 +145,7 @@ test('middleware should work', async t => {
   }
 })
 
-test('first response returned should resolve stack', async t => {
+test('first response returned should resolve stack', async (t) => {
   mockGlobal()
 
   const r = new Router()
@@ -177,7 +179,7 @@ test('first response returned should resolve stack', async t => {
       await next()
       history.push(`get-user-2-after-middleware-${ctx.params.id}`)
     })
-    .handle(async ctx => {
+    .handle(async (ctx) => {
       if (ctx.params.id === 'bail-early') {
         t.fail('Request should have bailed early, so this should not be called')
       }
@@ -186,14 +188,16 @@ test('first response returned should resolve stack', async t => {
       return ctx.end('hi')
     })
 
-  r.get`/users/${'id'}`.handle(async ctx => {
+  r.get`/users/${'id'}`.handle(async (ctx) => {
     t.fail('should never get called')
     return ctx.end('hi')
   })
 
-  r.all`(.*)`.handle(ctx => ctx.end('Not found', { status: 404 }))
+  r.all`(.*)`.handle((ctx) => ctx.end('Not found', { status: 404 }))
 
-  let res = await r.getResponseForRequest({ url: '/users/123', method: 'GET' } as Request)
+  let res = await r.getResponseForEvent({
+    request: { url: '/users/123', method: 'GET' },
+  } as FetchEvent)
 
   t.deepEqual(history, [
     'all-*',
@@ -213,7 +217,9 @@ test('first response returned should resolve stack', async t => {
     t.fail('Response was undefined')
   }
 
-  res = await r.getResponseForRequest({ url: '/users/bail-early', method: 'GET' } as Request)
+  res = await r.getResponseForEvent({
+    request: { url: '/users/bail-early', method: 'GET' },
+  } as FetchEvent)
 
   if (res) {
     t.is(await res.text(), 'whoa')
@@ -221,7 +227,7 @@ test('first response returned should resolve stack', async t => {
     t.fail('Response was undefined')
   }
 
-  res = await r.getResponseForRequest({ url: '/no-route', method: 'GET' } as Request)
+  res = await r.getResponseForEvent({ request: { url: '/no-route', method: 'GET' } } as FetchEvent)
 
   if (res) {
     t.is(await res.text(), 'Not found')
@@ -230,7 +236,7 @@ test('first response returned should resolve stack', async t => {
   }
 })
 
-test('response editing in middleware should work', async t => {
+test('response editing in middleware should work', async (t) => {
   mockGlobal()
 
   const r = new Router()
@@ -240,9 +246,9 @@ test('response editing in middleware should work', async t => {
     await next()
   })
 
-  r.get`/foo`.handle(ctx => ctx.end('hi'))
+  r.get`/foo`.handle((ctx) => ctx.end('hi'))
 
-  const res = await r.getResponseForRequest({ url: '/foo', method: 'GET' } as Request)
+  const res = await r.getResponseForEvent({ request: { url: '/foo', method: 'GET' } } as FetchEvent)
 
   if (res) {
     t.is(await res.text(), 'hi')
@@ -252,7 +258,7 @@ test('response editing in middleware should work', async t => {
   }
 })
 
-test('multiple params specified should all be defined', async t => {
+test('multiple params specified should all be defined', async (t) => {
   mockGlobal()
 
   const r = new Router()
@@ -265,11 +271,16 @@ test('multiple params specified should all be defined', async t => {
     await next()
   })
 
-  r.get`/users/${'userId'}/books/${'bookId'}`.handle(async ctx => {
+  r.get`/users/${'userId'}/books/${'bookId'}`.handle(async (ctx) => {
     result.push(['handler', ctx.params.userId, ctx.params.bookId])
   })
 
-  await r.getResponseForRequest({ url: '/users/123/books/456', method: 'GET' } as Request)
+  await r.getResponseForEvent({
+    request: { url: '/users/123/books/456', method: 'GET' },
+  } as FetchEvent)
 
-  t.deepEqual(result, [['middleware', '123', '456'], ['handler', '123', '456']])
+  t.deepEqual(result, [
+    ['middleware', '123', '456'],
+    ['handler', '123', '456'],
+  ])
 })
