@@ -27,11 +27,11 @@ export function kvStatic(options: KVStaticOptions): Middleware {
     } as const
     const supportedExtensions = Object.keys(contentTypes)
 
-    if (!supportedExtensions.some(ext => ctx.request.url.endsWith('.' + ext))) {
+    if (!supportedExtensions.some((ext) => ctx.event.request.url.endsWith('.' + ext))) {
       return next()
     }
 
-    const filename = ctx.request.url.substring(ctx.request.url.lastIndexOf('/') + 1)
+    const filename = ctx.event.request.url.substring(ctx.event.request.url.lastIndexOf('/') + 1)
     const ext = filename.substring(filename.lastIndexOf('.') + 1)
     const contentType = contentTypes[ext as keyof typeof contentTypes] || 'text'
     const body = await options.kv.get(filename, 'stream')
