@@ -52,7 +52,7 @@ export class Context<Data = any, Params = any> {
     })
   }
 
-  json(body: object, responseInit: ResponseInit = {}) {
+  json(body: any, responseInit: ResponseInit = {}) {
     return this.end(JSON.stringify(body), {
       ...responseInit,
       headers: {
