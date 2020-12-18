@@ -17,7 +17,7 @@ export class Context<Data = any, Params = any> {
     this.data = data
   }
 
-  end(body: string | ReadableStream | Response, responseInit: ResponseInit = {}) {
+  end(body: string | ReadableStream | Response | null, responseInit: ResponseInit = {}) {
     if (body instanceof Response) {
       this.response = body
       return this.response
