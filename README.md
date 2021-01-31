@@ -27,10 +27,10 @@ import { Router } from '8track'
 const router = new Router()
 
 router.all`(.*)`.use(async (ctx, next) => {
-  const url = new URL(ctx.request.url)
-  console.log(`Handling ${ctx.request.method} - ${url.pathname}`)
+  const url = new URL(ctx.event.request.url)
+  console.log(`Handling ${ctx.event.request.method} - ${url.pathname}`)
   await next()
-  console.log(`${ctx.request.method} - ${url.pathname}`)
+  console.log(`${ctx.event.request.method} - ${url.pathname}`)
 })
 
 router.get`/`.handle(ctx => ctx.html('Hello, world!'))
