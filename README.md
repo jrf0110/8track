@@ -129,6 +129,22 @@ router.get`/users/${'userId'}`.handle((ctx) => {
 })
 ```
 
+#### Sub-router mounting
+
+```typescript
+const apiRouter = new Router()
+const usersRouter = new Router()
+const userBooksRouter = new Router()
+
+usersRouter.get`/`.handle((ctx) => ctx.end('users-list'))
+usersRouter.get`/${'id'}`.handle((ctx) => ctx.end(`user: ${ctx.params.id}`))
+userBooksRouter.get`/`.handle((ctx) => ctx.end('books-list'))
+userBooksRouter.get`/${'id'}`.handle((ctx) => ctx.end(`book: ${ctx.params.id}`))
+
+usersRouter.all`/${'id'}/books`.use(userBooksRouter)
+apiRouter.all`/api/users`.use(usersRouter)
+```
+
 ## API
 
 ### Router<RouteData>

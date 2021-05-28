@@ -12,11 +12,11 @@ test('.getMatchingRoutes() empty for non-matches', (t) => {
 
   const r = new Router()
 
-  t.deepEqual(r.getMatchingRoutes({ url: '/', method: 'GET' }), [])
+  t.deepEqual(r.getMatchingRoutesForURLAndMethod(new URL('http://foo.bar/'), 'GET'), [])
 
   r.get`/api/users`.handle((ctx) => ctx.end('users-list'))
 
-  t.deepEqual(r.getMatchingRoutes({ url: '/', method: 'GET' }), [])
+  t.deepEqual(r.getMatchingRoutesForURLAndMethod(new URL('http://foo.bar/'), 'GET'), [])
 })
 
 test('.getMatchingRoutes() matches no path no vars', (t) => {
@@ -26,7 +26,28 @@ test('.getMatchingRoutes() matches no path no vars', (t) => {
 
   t.deepEqual(
     r
-      .getMatchingRoutes({ method: 'GET', url: 'http://foo.bar/api/users' })
+      .getMatchingRoutesForURLAndMethod(new URL('http://foo.bar/api/users'), 'GET')
+      .map((m) => [m.route.original, m.params]),
+    [['/api/users', {}]],
+  )
+})
+
+test('.getMatchingRoutes() matches with and without trailing slash', (t) => {
+  mockGlobal()
+
+  const r = new Router()
+  r.get`/api/users`.handle((ctx) => ctx.end('users-list'))
+
+  t.deepEqual(
+    r
+      .getMatchingRoutesForURLAndMethod(new URL('http://foo.bar/api/users/'), 'GET')
+      .map((m) => [m.route.original, m.params]),
+    [['/api/users', {}]],
+  )
+
+  t.deepEqual(
+    r
+      .getMatchingRoutesForURLAndMethod(new URL('http://foo.bar/api/users'), 'GET')
       .map((m) => [m.route.original, m.params]),
     [['/api/users', {}]],
   )
@@ -42,7 +63,7 @@ test('.getMatchingRoutes() matches with vars', (t) => {
 
   t.deepEqual(
     r
-      .getMatchingRoutes({ method: 'GET', url: 'http://foo.bar/api/users/123' })
+      .getMatchingRoutesForURLAndMethod(new URL('http://foo.bar/api/users/123'), 'GET')
       .map((m) => [m.route.original, m.params]),
     [['/api/users/:id', { id: '123' }]],
   )
@@ -58,7 +79,7 @@ test('.getMatchingRoutes() works with hostnames', (t) => {
 
   t.deepEqual(
     r
-      .getMatchingRoutes({ method: 'GET', url: 'http://foo.bar/api/users/123' })
+      .getMatchingRoutesForURLAndMethod(new URL('http://foo.bar/api/users/123'), 'GET')
       .map((m) => [m.route.original, m.params]),
     [['/api/users/:id', { id: '123' }]],
   )
@@ -77,13 +98,13 @@ test('helper methods work', (t) => {
   r.options`/options`.handle((ctx) => ctx.end('hi'))
   r.all`/all`.handle((ctx) => ctx.end('hi'))
 
-  t.is(r.getMatchingRoutes({ url: '/get', method: 'GET' }).length, 1)
-  t.is(r.getMatchingRoutes({ url: '/post', method: 'POST' }).length, 1)
-  t.is(r.getMatchingRoutes({ url: '/put', method: 'PUT' }).length, 1)
-  t.is(r.getMatchingRoutes({ url: '/patch', method: 'PATCH' }).length, 1)
-  t.is(r.getMatchingRoutes({ url: '/delete', method: 'DELETE' }).length, 1)
-  t.is(r.getMatchingRoutes({ url: '/options', method: 'OPTIONS' }).length, 1)
-  t.is(r.getMatchingRoutes({ url: '/all', method: 'ALL' }).length, 1)
+  t.is(r.getMatchingRoutesForURLAndMethod(new URL('http://foo.bar/get'), 'GET').length, 1)
+  t.is(r.getMatchingRoutesForURLAndMethod(new URL('http://foo.bar/post'), 'POST').length, 1)
+  t.is(r.getMatchingRoutesForURLAndMethod(new URL('http://foo.bar/put'), 'PUT').length, 1)
+  t.is(r.getMatchingRoutesForURLAndMethod(new URL('http://foo.bar/patch'), 'PATCH').length, 1)
+  t.is(r.getMatchingRoutesForURLAndMethod(new URL('http://foo.bar/delete'), 'DELETE').length, 1)
+  t.is(r.getMatchingRoutesForURLAndMethod(new URL('http://foo.bar/options'), 'OPTIONS').length, 1)
+  t.is(r.getMatchingRoutesForURLAndMethod(new URL('http://foo.bar/all'), 'ALL').length, 1)
 })
 
 test('middleware should work', async (t) => {
@@ -97,6 +118,7 @@ test('middleware should work', async (t) => {
     history.push('all-*')
     ctx.response.headers.append('All-Star-Before-Next', 'True')
     await next()
+    ctx.response.headers.append('All-Star-After-Next', 'True')
     history.push('all-*-after-next')
   })
 
@@ -144,6 +166,7 @@ test('middleware should work', async (t) => {
   if (res) {
     t.is(res.headers.get('All-Star-Before-Next'), 'True')
     t.is(res.headers.get('Users-UserID-After-Next'), 'True')
+    t.is(res.headers.get('All-Star-After-Next'), 'True')
     t.is(await res.text(), 'hi')
   } else {
     t.fail('Response was undefined')
@@ -292,4 +315,34 @@ test('multiple params specified should all be defined', async (t) => {
     ['middleware', '123', '456'],
     ['handler', '123', '456'],
   ])
+})
+
+test('routers should be composable', (t) => {
+  mockGlobal()
+
+  const apiRouter = new Router()
+  const usersRouter = new Router()
+  const userBooksRouter = new Router()
+
+  usersRouter.get`/`.handle((ctx) => ctx.end('users-list'))
+  usersRouter.get`/${'id'}`.handle((ctx) => ctx.end(`user: ${ctx.params.id}`))
+  userBooksRouter.get`/`.handle((ctx) => ctx.end('books-list'))
+  userBooksRouter.get`/${'id'}`.handle((ctx) => ctx.end(`book: ${ctx.params.id}`))
+
+  usersRouter.all`/${'id'}/books`.use(userBooksRouter)
+  apiRouter.all`/api/users`.use(usersRouter)
+
+  t.deepEqual(
+    apiRouter
+      .getMatchingRoutesForURLAndMethod(new URL('http://foo.bar/api/users/123'), 'GET')
+      .map((m) => [m.route.original, m.params]),
+    [['/api/users/:id', { id: '123' }]],
+  )
+
+  t.deepEqual(
+    apiRouter
+      .getMatchingRoutesForURLAndMethod(new URL('http://foo.bar/api/users/123/books/'), 'GET')
+      .map((m) => [m.route.original, m.params]),
+    [['/api/users/:id/books', { id: '123' }]],
+  )
 })

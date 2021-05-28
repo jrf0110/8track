@@ -5,6 +5,7 @@ interface ContextProps<Data = any, Params = any> {
   response: Response
   params: Params
   data: Data
+  url: URL
 }
 /**
  * Middleware and handler context. Container to read data about a route
@@ -16,12 +17,14 @@ export class Context<Data = any, Params = any> {
   readonly params: Params
   response: Response
   data: Data
+  url: URL
 
-  constructor({ event, response, params, data }: ContextProps<Data, Params>) {
+  constructor({ event, response, params, data, url }: ContextProps<Data, Params>) {
     this.event = event
     this.response = response
     this.params = params
     this.data = data
+    this.url = url
   }
 
   end(body: string | ReadableStream | Response | null, responseInit: ResponseInit = {}) {

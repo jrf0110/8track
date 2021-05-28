@@ -1,5 +1,6 @@
 import pathToRegExp from 'path-to-regexp'
 import { Context } from './Context'
+import { pathJoin } from './path'
 
 export type Handler<ContextData = any, Params = any> = (
   ctx: Context<ContextData, Params>,
@@ -35,7 +36,7 @@ export interface RouteTagResult<ContextData, Params> {
   /**
    * Mount middleware
    */
-  use: (handler: Middleware<ContextData, Params>) => RouteTagResult<ContextData, Params>
+  use: (handler: Middleware<ContextData, Params> | Router) => RouteTagResult<ContextData, Params>
   /**
    * Get back the original router instance
    */
@@ -43,7 +44,7 @@ export interface RouteTagResult<ContextData, Params> {
 }
 
 export class Router<ContextData = any> {
-  private routes: Route[] = []
+  public routes: Route[] = []
 
   all = <A extends string, T extends { [K in A]: string }>(
     strings: TemplateStringsArray,
@@ -90,16 +91,37 @@ export class Router<ContextData = any> {
     strings: TemplateStringsArray,
     paramNames: Param[],
   ) => {
-    const original = strings.reduce((result, str, i) => {
+    let original = strings.reduce((result, str, i) => {
       const paramString = ((paramNames as any)[i] && `:${(paramNames as any)[i]}`) || ''
       return `${result}${str}${paramString}`
     }, '')
 
+    // Don't allow explicitly setting trailing slash as this makes
+    // Makes it explicitly required
+    if (original.endsWith('/')) {
+      original = original.substring(0, original.length - 1)
+    }
+
     const pattern = [pathToRegExp(original), pathToRegExp.parse(original)] as const
 
     const result: RouteTagResult<ContextData, Vars> = {
-      use: (handler: Middleware<ContextData, Vars>) => {
-        this.routes.push({ original, pattern, handler, method })
+      use: (routerOrHandler: Middleware<ContextData, Vars> | Router) => {
+        if (routerOrHandler instanceof Router) {
+          const router = routerOrHandler
+          router.routes.forEach((route) => {
+            const routeOriginal = pathJoin(original, route.original)
+            this.routes.push({
+              original: routeOriginal,
+              pattern: [pathToRegExp(routeOriginal), pathToRegExp.parse(routeOriginal)],
+              handler: route.handler,
+              method: route.method,
+            })
+          })
+        } else {
+          const handler = routerOrHandler
+          this.routes.push({ original, pattern, handler, method })
+        }
+
         return result
       },
 
@@ -114,11 +136,7 @@ export class Router<ContextData = any> {
     return result
   }
 
-  getMatchingRoutes(request: RouteRequest): RouteMatch[] {
-    const url = !request.url.startsWith('http')
-      ? new URL(`http://domain${request.url.startsWith('/') ? '' : '/'}${request.url}`)
-      : new URL(request.url)
-
+  getMatchingRoutesForURLAndMethod(url: URL, targetMethod: string) {
     return this.routes.reduce((result, route) => {
       const {
         pattern: [pattern, routeTokens],
@@ -126,7 +144,7 @@ export class Router<ContextData = any> {
         original,
       } = route
 
-      if (method !== 'ALL' && method !== request.method) return result
+      if (method !== 'ALL' && method !== targetMethod) return result
 
       // const [patternRegex, patternParse] = pattern
       const patternResult = pattern.exec(original.startsWith('http') ? url.href : url.pathname)
@@ -153,6 +171,17 @@ export class Router<ContextData = any> {
       return result
     }, [] as RouteMatch[])
   }
+
+  /**
+   * @deprecated
+   */
+  getMatchingRoutes(request: RouteRequest): RouteMatch[] {
+    const url = !request.url.startsWith('http')
+      ? new URL(`http://domain${request.url.startsWith('/') ? '' : '/'}${request.url}`)
+      : new URL(request.url)
+
+    return this.getMatchingRoutesForURLAndMethod(url, request.method)
+  }
   /**
    * This function is tricky due to the stack-nature of async-middlware
    * systems. Where a `.handle` is the last function called, but the
@@ -163,7 +192,10 @@ export class Router<ContextData = any> {
    * @returns Promise<Response>
    */
   async getResponseForEvent(event: FetchEvent) {
-    const matchingRoutes = this.getMatchingRoutes(event.request)
+    const url = !event.request.url.startsWith('http')
+      ? new URL(`http://domain${event.request.url.startsWith('/') ? '' : '/'}${event.request.url}`)
+      : new URL(event.request.url)
+    const matchingRoutes = this.getMatchingRoutesForURLAndMethod(url, event.request.method)
 
     if (matchingRoutes.length === 0) return
 
@@ -174,6 +206,7 @@ export class Router<ContextData = any> {
       response,
       params: {},
       data,
+      url,
     })
 
     // Adapted from koa-compose https://github.com/koajs/compose/blob/master/index.js
