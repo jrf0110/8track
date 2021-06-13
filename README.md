@@ -27,10 +27,9 @@ import { Router, handle } from '8track'
 const router = new Router()
 
 router.all`(.*)`.use(async (ctx, next) => {
-  const url = new URL(ctx.event.request.url)
-  console.log(`Handling ${ctx.event.request.method} - ${url.pathname}`)
+  console.log(`Handling ${ctx.event.request.method} - ${ctx.url.pathname}`)
   await next()
-  console.log(`${ctx.event.request.method} - ${url.pathname}`)
+  console.log(`${ctx.event.request.method} - ${ctx.url.pathname}`)
 })
 
 router.get`/`.handle((ctx) => ctx.html('Hello, world!'))
@@ -221,6 +220,24 @@ router.patch`/api/users/${'id'}`.use(async (ctx, next) => {
   console.log('After: User ID', ctx.params.id)
 })
 ```
+
+### Context
+
+Each route handler and middleware receives an instance of `Context`.
+
+#### Context Properties
+
+- `readonly event: FetchEvent`
+- `readonly params: Params`
+- `response: Response`
+- `data: Data`
+- `url: URL`
+
+#### Context Methods
+
+- `end(body: string | ReadableStream | Response | null, responseInit: ResponseInit = {})`
+- `html(body: string | ReadableStream, responseInit: ResponseInit = {})`
+- `json(body: any, responseInit: ResponseInit = {})`
 
 ##### What's up with that weird syntax?
 
