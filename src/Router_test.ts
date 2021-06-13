@@ -148,7 +148,7 @@ test('middleware should work', async (t) => {
     })
 
   const res = await r.getResponseForEvent({
-    request: { url: '/users/123', method: 'GET' },
+    request: { url: 'http://foo.bar/users/123', method: 'GET' },
   } as FetchEvent)
 
   t.deepEqual(history, [
@@ -224,7 +224,7 @@ test('first response returned should resolve stack', async (t) => {
   r.all`(.*)`.handle((ctx) => ctx.end('Not found', { status: 404 }))
 
   let res = await r.getResponseForEvent({
-    request: { url: '/users/123', method: 'GET' },
+    request: { url: 'http://foo.bar/users/123', method: 'GET' },
   } as FetchEvent)
 
   t.deepEqual(history, [
@@ -246,7 +246,7 @@ test('first response returned should resolve stack', async (t) => {
   }
 
   res = await r.getResponseForEvent({
-    request: { url: '/users/bail-early', method: 'GET' },
+    request: { url: 'http://foo.bar/users/bail-early', method: 'GET' },
   } as FetchEvent)
 
   if (res) {
@@ -256,7 +256,7 @@ test('first response returned should resolve stack', async (t) => {
   }
 
   res = await r.getResponseForEvent({
-    request: { url: '/no-route', method: 'GET' },
+    request: { url: 'http://foo.bar/no-route', method: 'GET' },
   } as FetchEvent)
 
   if (res) {
@@ -279,7 +279,7 @@ test('response editing in middleware should work', async (t) => {
   r.get`/foo`.handle((ctx) => ctx.end('hi'))
 
   const res = await r.getResponseForEvent({
-    request: { url: '/foo', method: 'GET' },
+    request: { url: 'http://foo.bar/foo', method: 'GET' },
   } as FetchEvent)
 
   if (res) {
@@ -308,7 +308,7 @@ test('multiple params specified should all be defined', async (t) => {
   })
 
   await r.getResponseForEvent({
-    request: { url: '/users/123/books/456', method: 'GET' },
+    request: { url: 'http://foo.bar/users/123/books/456', method: 'GET' },
   } as FetchEvent)
 
   t.deepEqual(result, [
@@ -325,24 +325,31 @@ test('routers should be composable', (t) => {
   const userBooksRouter = new Router()
 
   usersRouter.get`/`.handle((ctx) => ctx.end('users-list'))
-  usersRouter.get`/${'id'}`.handle((ctx) => ctx.end(`user: ${ctx.params.id}`))
+  usersRouter.get`/${'userId'}`.handle((ctx) => ctx.end(`user: ${ctx.params.userId}`))
   userBooksRouter.get`/`.handle((ctx) => ctx.end('books-list'))
-  userBooksRouter.get`/${'id'}`.handle((ctx) => ctx.end(`book: ${ctx.params.id}`))
+  userBooksRouter.get`/${'bookId'}`.handle((ctx) => ctx.end(`book: ${ctx.params.bookId}`))
 
-  usersRouter.all`/${'id'}/books`.use(userBooksRouter)
+  usersRouter.all`/${'userId'}/books`.use(userBooksRouter)
   apiRouter.all`/api/users`.use(usersRouter)
 
   t.deepEqual(
     apiRouter
       .getMatchingRoutesForURLAndMethod(new URL('http://foo.bar/api/users/123'), 'GET')
       .map((m) => [m.route.original, m.params]),
-    [['/api/users/:id', { id: '123' }]],
+    [['/api/users/:userId', { userId: '123' }]],
   )
 
   t.deepEqual(
     apiRouter
       .getMatchingRoutesForURLAndMethod(new URL('http://foo.bar/api/users/123/books/'), 'GET')
       .map((m) => [m.route.original, m.params]),
-    [['/api/users/:id/books', { id: '123' }]],
+    [['/api/users/:userId/books', { userId: '123' }]],
+  )
+
+  t.deepEqual(
+    apiRouter
+      .getMatchingRoutes({ method: 'GET', url: 'http://foo.bar/api/users/123/books/456' })
+      .map((m) => [m.route.original, m.params]),
+    [['/api/users/:userId/books/:bookId', { userId: '123', bookId: '456' }]],
   )
 })
