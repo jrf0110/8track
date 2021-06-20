@@ -1,6 +1,3 @@
-import { Middleware } from './Router'
-import {} from '@cloudflare/workers-types'
-
 // TODO: this doesn't work yet
 // export function cfErrorMiddleware(): Middleware {
 //   return async (ctx, next) => {
@@ -19,7 +16,7 @@ export function getErrorPageHTML(request: Request, error: Error) {
     ['Method', request.method],
     ['HTTP', (request.cf || {}).httpProtocol],
     ['TLS Version', (request.cf || {}).tlsVersion],
-    ['ASN', (request.cf || {}).asn],
+    ['ASN', (request.cf || {}).asn.toString()],
     ['Priority', (request.cf || {}).requestPriority],
     ['Trust Score', ((request.cf || {}).clientTrustScore || '').toString()],
     ['Colo', (request.cf || {}).colo],
@@ -80,9 +77,11 @@ export function getErrorPageHTML(request: Request, error: Error) {
   </head>
   <body>
     <div class="error">
-      ${/*<div class="error-source">
+      ${
+        /*<div class="error-source">
         ${error.stack}
-  </div>*/ ''}
+  </div>*/ ''
+      }
       <pre class="error-msg">${error.message}</pre>
       <div class="error-details">
         ${errorDetails

@@ -1,5 +1,4 @@
 import { Middleware } from '../Router'
-import { KVNamespace } from '@cloudflare/workers-types'
 
 interface KVStaticOptions {
   kv: KVNamespace

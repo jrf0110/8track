@@ -1,9 +1,10 @@
 import test from 'ava'
+import { Headers, Response } from 'node-fetch'
 const makeServiceWorkerEnv = require('service-worker-mock')
-import { Router, Context, Middleware } from './Router'
+import { Router } from './Router'
 
 function mockGlobal() {
-  Object.assign(global, makeServiceWorkerEnv())
+  Object.assign(global, makeServiceWorkerEnv(), { Headers, Response })
 }
 
 test('.getMatchingRoutes() empty for non-matches', (t) => {
@@ -94,6 +95,7 @@ test('middleware should work', async (t) => {
 
   r.all`(.*)`.use(async (ctx, next) => {
     history.push('all-*')
+    ctx.response.headers.append('All-Star-Before-Next', 'True')
     await next()
     history.push('all-*-after-next')
   })
@@ -103,6 +105,7 @@ test('middleware should work', async (t) => {
 
     history.push(`get-userId-middleware-${ctx.params.userId}`)
     await next()
+    ctx.response.headers.set('Users-UserID-After-Next', 'True')
     history.push(`get-userId-after-middleware-${ctx.params.userId}`)
   })
 
@@ -139,6 +142,8 @@ test('middleware should work', async (t) => {
   ])
 
   if (res) {
+    t.is(res.headers.get('All-Star-Before-Next'), 'True')
+    t.is(res.headers.get('Users-UserID-After-Next'), 'True')
     t.is(await res.text(), 'hi')
   } else {
     t.fail('Response was undefined')
