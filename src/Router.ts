@@ -1,67 +1,5 @@
 import pathToRegExp from 'path-to-regexp'
-
-/**
- * Middleware and handler context. Container to read data about a route
- * and to share data between middlewares and handlers
- */
-export class Context<Data = any, Params = any> {
-  readonly event: FetchEvent
-  readonly params: Params
-  response: Response
-  data: Data
-
-  constructor(event: FetchEvent, response: Response, params: Params, data: Data) {
-    this.event = event
-    this.response = response
-    this.params = params
-    this.data = data
-  }
-
-  end(body: string | ReadableStream | Response | null, responseInit: ResponseInit = {}) {
-    if (body instanceof Response) {
-      this.response = body
-      return this.response
-    }
-
-    const headers = [...(this.response.headers as any).entries()].reduce(
-      (result, [k, v]: [string, string]) => {
-        result[k] = v
-        return result
-      },
-      {} as { [key: string]: string },
-    )
-
-    Object.assign(headers, responseInit.headers)
-
-    this.response = new Response(body, {
-      ...this.response,
-      ...responseInit,
-      headers,
-    })
-
-    return this.response
-  }
-
-  html(body: string | ReadableStream, responseInit: ResponseInit = {}) {
-    return this.end(body, {
-      ...responseInit,
-      headers: {
-        'Content-Type': 'text/html',
-        ...(responseInit.headers || {}),
-      },
-    })
-  }
-
-  json(body: any, responseInit: ResponseInit = {}) {
-    return this.end(JSON.stringify(body), {
-      ...responseInit,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(responseInit.headers || {}),
-      },
-    })
-  }
-}
+import { Context } from './Context'
 
 export type Handler<ContextData = any, Params = any> = (
   ctx: Context<ContextData, Params>,
@@ -215,13 +153,11 @@ export class Router<ContextData = any> {
       return result
     }, [] as RouteMatch[])
   }
-
-  createContext(event: FetchEvent, response: Response, params: any = {}, data: any = {}): Context {
-    return new Context(event, response, params, data)
-  }
-
   /**
-   * Generates a response for current event.
+   * This function is tricky due to the stack-nature of async-middlware
+   * systems. Where a `.handle` is the last function called, but the
+   * first function resolved. There's some tail recursion here. I hope
+   * to add a better description here later.
    *
    * @param event FetchEvent
    * @returns Promise<Response>
@@ -231,8 +167,14 @@ export class Router<ContextData = any> {
 
     if (matchingRoutes.length === 0) return
 
-    const sharedData = {}
-    let ctx: Context
+    const data = {}
+    const response = new Response()
+    let ctx: Context = new Context({
+      event,
+      response,
+      params: {},
+      data,
+    })
 
     // Adapted from koa-compose https://github.com/koajs/compose/blob/master/index.js
     let index = -1
@@ -243,11 +185,18 @@ export class Router<ContextData = any> {
       if (i === matchingRoutes.length) return
       index = i
       const { route, params } = matchingRoutes[i]
-      ctx = this.createContext(event, (ctx && ctx.response) || new Response(), params, sharedData)
+      // Manage each middleware's scope to params
+      ;(ctx as any).params = params
 
       try {
-        return Promise.resolve(route.handler(ctx, dispatch.bind(null, i + 1) as any)).then(
-          () => ctx.response,
+        return Promise.resolve(
+          route.handler(ctx, async () => {
+            await Promise.resolve(dispatch(i + 1) || null)
+            // As the middleware undwinds, reset the params so that each
+            // middleware after awaiting next() still has the appropriate
+            // reference to params
+            ;(ctx as any).params = params
+          }),
         )
       } catch (err) {
         return Promise.reject(err)

@@ -2,8 +2,9 @@
   "compilerOptions": {
     "outDir": "./dist",
     "module": "commonjs",
-    "target": "esnext",
-    "lib": ["esnext", "webworker"],
+    "target": "es2020",
+    "lib": ["es2020", "webworker"],
+    "types": ["@cloudflare/workers-types", "node"],
     "alwaysStrict": true,
     "strict": true,
     "preserveConstEnums": true,
