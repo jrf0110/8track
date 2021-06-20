@@ -1,4 +1,5 @@
 export * from './cfErrorMiddleware'
 export * from './Context'
+export * from './handle'
 export * from './middleware'
 export * from './Router'
