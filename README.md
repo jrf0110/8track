@@ -22,7 +22,7 @@ This library is written in TypeScript, so typings are bundled.
 #### Basic usage
 
 ```typescript
-import { Router } from '8track'
+import { Router, handle } from '8track'
 
 const router = new Router()
 
@@ -33,13 +33,11 @@ router.all`(.*)`.use(async (ctx, next) => {
   console.log(`${ctx.event.request.method} - ${url.pathname}`)
 })
 
-router.get`/`.handle(ctx => ctx.html('Hello, world!'))
+router.get`/`.handle((ctx) => ctx.html('Hello, world!'))
 
-router.all`(.*)`.handle(ctx => ctx.end('Not found', { status: 404 }))
+router.all`(.*)`.handle((ctx) => ctx.end('Not found', { status: 404 }))
 
-addEventListener('fetch', (e: FetchEvent) => {
-  e.respondWith(router.getResponseForEvent(e))
-})
+addEventListener('fetch', (event) => handle({ event, router }))
 ```
 
 ## Examples
@@ -79,9 +77,9 @@ import { Router, getErrorPageHTML } from '8track'
 
 const router = new Router()
 
-addEventListener('fetch', e => {
+addEventListener('fetch', (e) => {
   const res = router.getResponseForEvent(e).catch(
-    error =>
+    (error) =>
       new Response(getErrorPageHTML(e.request, error), {
         status: 500,
         headers: {
@@ -125,7 +123,7 @@ const router = new Router<RouteData>()
 // For all user requests, attach the user
 router.all`/users/${'userId'}`.use(getUserMiddleware)
 
-router.get`/users/${'userId'}`.handle(ctx => {
+router.get`/users/${'userId'}`.handle((ctx) => {
   if (!ctx.data.user) return ctx.end('Not found', { status: 404 })
   ctx.json(JSON.stringify(ctx.data.user))
 })
@@ -150,7 +148,7 @@ Given an event, run the matching middleware chain and return the response return
 The primary way to interact with the router is to add routes via method tags:
 
 ```typescript
-router.post`/api/users`.handle(ctx => ctx.json({ id: 123 }))
+router.post`/api/users`.handle((ctx) => ctx.json({ id: 123 }))
 ```
 
 In the above example, the `post` tag returns a [RouteMatchResult](#routematchresult) object.
