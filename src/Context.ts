@@ -32,7 +32,7 @@ export class Context<Data = any, Params = any> {
       this.response = new Response(body.body, {
         ...this.response,
         ...body,
-        headers: mergeHeaders(this.response.headers, body, responseInit.headers || {}),
+        headers: mergeHeaders(this.response.headers, body.headers, responseInit.headers || {}),
       })
 
       return this.response
