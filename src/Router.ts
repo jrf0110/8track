@@ -182,6 +182,7 @@ export class Router<ContextData = any> {
 
     return this.getMatchingRoutesForURLAndMethod(url, request.method)
   }
+
   /**
    * This function is tricky due to the stack-nature of async-middlware
    * systems. Where a `.handle` is the last function called, but the
@@ -212,8 +213,8 @@ export class Router<ContextData = any> {
     // Adapted from koa-compose https://github.com/koajs/compose/blob/master/index.js
     let index = -1
 
-    const dispatch = (i: number): Promise<Response | undefined> | void => {
-      if (i <= index) return Promise.reject(new Error('next() called multiple times'))
+    const dispatch = async (i: number): Promise<void> => {
+      if (i <= index) throw new Error('next() called multiple times')
       // Last route did not handle response, just return
       if (i === matchingRoutes.length) return
       index = i
@@ -221,25 +222,16 @@ export class Router<ContextData = any> {
       // Manage each middleware's scope to params
       ;(ctx as any).params = params
 
-      try {
-        return Promise.resolve(
-          route.handler(ctx, async () => {
-            await Promise.resolve(dispatch(i + 1) || null)
-            // As the middleware undwinds, reset the params so that each
-            // middleware after awaiting next() still has the appropriate
-            // reference to params
-            ;(ctx as any).params = params
-          }),
-        )
-      } catch (err) {
-        return Promise.reject(err)
-      }
+      await route.handler(ctx, dispatch.bind(null, i + 1))
+
+      // As the middleware undwinds, reset the params so that each
+      // middleware after awaiting next() still has the appropriate
+      // reference to params
+      if (i > 0)
+        (ctx as any).params = matchingRoutes[i - 1].params
     }
 
-    const p = dispatch(0)
-
-    if (p) return p.then(() => ctx.response)
-
-    return null
+    await dispatch(0)
+    return ctx.response
   }
 }
