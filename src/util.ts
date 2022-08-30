@@ -11,11 +11,13 @@ export function mergeHeaders(...allHeaders: (Headers | object)[]): Headers {
   for (let ithHeader of allHeaders) {
     if (ithHeader instanceof Headers) {
       for (let [k, v] of ithHeader) {
-        result.set(k, v)
+        ithHeader.get('Set-Cookie') !== null ? result.append(k, v) : result.set(k, v)
       }
     } else {
       for (let key in ithHeader) {
-        result.set(key, (ithHeader as any)[key])
+        key === 'Set-Cookie'
+          ? result.append(key, (ithHeader as any)[key])
+          : result.set(key, (ithHeader as any)[key])
       }
     }
   }
