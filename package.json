@@ -9,10 +9,14 @@
     "8track": "./dist/cli.js"
   },
   "main": "./dist/index.js",
+  "module": "./dist/esm/index.js",
   "types": "./dist/index.d.ts",
+  "files": [
+    "dist/"
+  ],
   "scripts": {
     "prepublishOnly": "yarn build && yarn build:shebang && yarn build:executable",
-    "build": "tsc -d",
+    "build": "tsc -d && tsc -d --module ESNext --outDir dist/esm",
     "build:watch": "yarn build -w",
     "build:shebang": "printf '%s\n%s\n' \"#!/usr/bin/env node\n\" \"$(cat dist/cli.js)\" > dist/cli.js",
     "build:executable": "chmod +x dist/cli.js",
