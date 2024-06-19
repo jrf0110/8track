@@ -353,3 +353,34 @@ test('routers should be composable', (t) => {
     [['/api/users/:userId/books/:bookId', { userId: '123', bookId: '456' }]],
   )
 })
+
+test('ctx.end should properly merge status code', async (t) => {
+  mockGlobal()
+
+  const r = new Router()
+
+  r.get`/foo`.handle((ctx) => ctx.end(new Response('', { status: 501 }) as any))
+  r.get`/bar`.handle((ctx) => ctx.end('', { status: 500 }))
+
+  let res = await r.getResponseForEvent({
+    request: { url: 'http://foo.bar/foo', method: 'GET' },
+  } as FetchEvent)
+
+  if (!res) {
+    t.fail('No response returned for event')
+    return
+  }
+
+  t.is(res.status, 501)
+
+  res = await r.getResponseForEvent({
+    request: { url: 'http://foo.bar/bar', method: 'GET' },
+  } as FetchEvent)
+
+  if (!res) {
+    t.fail('No response returned for event')
+    return
+  }
+
+  t.is(res.status, 500)
+})
