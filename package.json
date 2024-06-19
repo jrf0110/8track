@@ -17,7 +17,7 @@
   "scripts": {
     "prepublishOnly": "yarn build && yarn build:shebang && yarn build:executable",
     "build": "tsc -d && tsc -d --module ESNext --outDir dist/esm",
-    "build:watch": "yarn build -w",
+    "build:watch": "tsc -w -d & tsc -w -d --module ESNext --outDir dist/esm",
     "build:shebang": "printf '%s\n%s\n' \"#!/usr/bin/env node\n\" \"$(cat dist/cli.js)\" > dist/cli.js",
     "build:executable": "chmod +x dist/cli.js",
     "typecheck": "tsc --noEmit",
