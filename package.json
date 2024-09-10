@@ -38,7 +38,7 @@
   "dependencies": {
     "form-data": "^2.5.0",
     "isomorphic-fetch": "^2.2.1",
-    "path-to-regexp": "^3.0.0",
+    "path-to-regexp": "^8.0.0",
     "storage-kv": "^0.0.9",
     "yargs": "^15.3.1"
   }
